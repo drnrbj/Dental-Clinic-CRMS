@@ -1,59 +1,124 @@
-<p align="center"><a href="https://laravel.com" target="_blank"><img src="https://raw.githubusercontent.com/laravel/art/master/logo-lockup/5%20SVG/2%20CMYK/1%20Full%20Color/laravel-logolockup-cmyk-red.svg" width="400" alt="Laravel Logo"></a></p>
+# 🦷 BobbyDent CRM
 
-<p align="center">
-<a href="https://github.com/laravel/framework/actions"><img src="https://github.com/laravel/framework/workflows/tests/badge.svg" alt="Build Status"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/dt/laravel/framework" alt="Total Downloads"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/v/laravel/framework" alt="Latest Stable Version"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/l/laravel/framework" alt="License"></a>
-</p>
+A web-based clinic management system built for dental practices — designed to streamline day-to-day operations across staff roles.
 
-## About Laravel
+![Laravel](https://img.shields.io/badge/Laravel-11-FF2D20?style=flat-square&logo=laravel&logoColor=white)
+![React](https://img.shields.io/badge/React-18-61DAFB?style=flat-square&logo=react&logoColor=black)
+![Inertia.js](https://img.shields.io/badge/Inertia.js-violet?style=flat-square)
+![TailwindCSS](https://img.shields.io/badge/Tailwind-CSS-38BDF8?style=flat-square&logo=tailwindcss&logoColor=white)
+![SQLite](https://img.shields.io/badge/SQLite-003B57?style=flat-square&logo=sqlite&logoColor=white)
 
-Laravel is a web application framework with expressive, elegant syntax. We believe development must be an enjoyable and creative experience to be truly fulfilling. Laravel takes the pain out of development by easing common tasks used in many web projects, such as:
+---
 
-- [Simple, fast routing engine](https://laravel.com/docs/routing).
-- [Powerful dependency injection container](https://laravel.com/docs/container).
-- Multiple back-ends for [session](https://laravel.com/docs/session) and [cache](https://laravel.com/docs/cache) storage.
-- Expressive, intuitive [database ORM](https://laravel.com/docs/eloquent).
-- Database agnostic [schema migrations](https://laravel.com/docs/migrations).
-- [Robust background job processing](https://laravel.com/docs/queues).
-- [Real-time event broadcasting](https://laravel.com/docs/broadcasting).
+## Overview
 
-Laravel is accessible, powerful, and provides tools required for large, robust applications.
+BobbyDent CRM covers the full patient lifecycle — from registration and appointment scheduling to treatment recording and billing. It's built as a single-page application feel using Inertia.js, meaning no API layer or separate frontend build: Laravel handles routing and data, React handles the UI, and Inertia bridges them seamlessly.
 
-## Learning Laravel
+The system implements role-based access control scoped to three user types: **admin**, **receptionist**, and **dentist** — each limited to the workflows relevant to their function.
 
-Laravel has the most extensive and thorough [documentation](https://laravel.com/docs) and video tutorial library of all modern web application frameworks, making it a breeze to get started with the framework. You can also check out [Laravel Learn](https://laravel.com/learn), where you will be guided through building a modern Laravel application.
+---
 
-If you don't feel like reading, [Laracasts](https://laracasts.com) can help. Laracasts contains thousands of video tutorials on a range of topics including Laravel, modern PHP, unit testing, and JavaScript. Boost your skills by digging into our comprehensive video library.
+## Features
 
-## Laravel Sponsors
+- **Dashboard** — At-a-glance stats (patients, revenue, appointments), a Recharts weekly bar chart, recent appointments table, and today's live schedule
+- **Patient Management** — Searchable patient registry with full demographic, contact, emergency contact, and medical history forms
+- **Appointment Scheduling** — FullCalendar-powered month/week/day views with click-to-schedule, slot availability checking, and status tracking
+- **Treatment Recording** — Treatment entries tied directly to appointment status transitions
+- **Billing & Invoicing** — Invoice generation with partial payment tracking and downloadable PDF receipts via DomPDF
+- **Role-Based Access Control** — Admin, receptionist, and dentist roles with scoped permissions via Laravel Sanctum (session-based)
 
-We would like to extend our thanks to the following sponsors for funding Laravel development. If you are interested in becoming a sponsor, please visit the [Laravel Partners program](https://partners.laravel.com).
+---
 
-### Premium Partners
+## Tech Stack
 
-- **[Vehikl](https://vehikl.com)**
-- **[Tighten Co.](https://tighten.co)**
-- **[Kirschbaum Development Group](https://kirschbaumdevelopment.com)**
-- **[64 Robots](https://64robots.com)**
-- **[Curotec](https://www.curotec.com/services/technologies/laravel)**
-- **[DevSquad](https://devsquad.com/hire-laravel-developers)**
-- **[Redberry](https://redberry.international/laravel-development)**
-- **[Active Logic](https://activelogic.com)**
+| Layer | Technology |
+|---|---|
+| Backend | Laravel 11 |
+| Frontend | React 18 (via Inertia.js) |
+| Styling | Tailwind CSS + @tailwindcss/forms |
+| Build tool | Vite |
+| Database | SQLite |
+| Auth | Laravel Sanctum (session-based) |
+| Calendar | FullCalendar (daygrid, timegrid, interaction) |
+| Charts | Recharts |
+| PDF | barryvdh/laravel-dompdf |
 
-## Contributing
+---
 
-Thank you for considering contributing to the Laravel framework! The contribution guide can be found in the [Laravel documentation](https://laravel.com/docs/contributions).
+## Architecture
 
-## Code of Conduct
+This project uses the **Inertia.js monolith pattern** — there is no REST API. Laravel controllers return `Inertia::render()` responses, passing typed props directly to React page components. All navigation uses Inertia's `<Link>` and `router` — no full page reloads, no separate API endpoints to maintain.
 
-In order to ensure that the Laravel community is welcoming to all, please review and abide by the [Code of Conduct](https://laravel.com/docs/contributions#code-of-conduct).
+```
+routes/web.php
+    └── Controller (auth + role middleware)
+            └── Inertia::render('PageName', [...props])
+                    └── React Page Component (receives props via usePage())
+                            └── AppLayout (persistent sidebar + topbar shell)
+```
 
-## Security Vulnerabilities
+Forms use Inertia's `useForm` hook — validation errors from Laravel flow back automatically to the component's `form.errors` object without any manual wiring.
 
-If you discover a security vulnerability within Laravel, please send an e-mail to Taylor Otwell via [taylor@laravel.com](mailto:taylor@laravel.com). All security vulnerabilities will be promptly addressed.
+---
 
-## License
+## Project Structure
 
-The Laravel framework is open-sourced software licensed under the [MIT license](https://opensource.org/licenses/MIT).
+```
+resources/js/
+├── Layouts/
+│   └── AppLayout.jsx         # Persistent sidebar + topbar + flash messages
+├── Components/
+│   ├── StatusBadge.jsx        # Reusable appointment status pill
+│   ├── StatCard.jsx           # Dashboard metric card
+│   ├── Patients/
+│   │   └── PatientModal.jsx   # Add patient form (4 sections, 17 fields)
+│   └── Appointments/
+│       └── AppointmentModal.jsx
+├── Pages/
+│   ├── Dashboard.jsx
+│   ├── Patients/Index.jsx
+│   ├── Appointments/Index.jsx
+│   ├── Treatments/Index.jsx
+│   └── Billing/Index.jsx
+app/Http/Controllers/
+├── DashboardController.php
+├── PatientController.php
+├── AppointmentController.php
+├── TreatmentController.php
+└── BillingController.php
+```
+
+---
+
+## Local Setup
+
+**Prerequisites:** PHP 8.2+, Composer, Node.js 20+
+
+```bash
+# 1. Clone and install dependencies
+git clone https://github.com/your-username/bobbydent-crm.git
+cd bobbydent-crm
+composer install
+npm install
+
+# 2. Environment
+cp .env.example .env
+php artisan key:generate
+
+# 3. Database
+touch database/database.sqlite
+# Set DB_CONNECTION=sqlite and DB_DATABASE=/absolute/path/to/database/database.sqlite in .env
+php artisan migrate --seed
+
+# 4. Run
+php artisan serve
+npm run dev
+```
+
+Visit `http://localhost:8000`
+
+---
+
+## Status
+
+This is a portfolio/demo project currently in active development. Core modules (dashboard, patients, appointments) are built. Treatments, billing, and full database persistence are in progress.
