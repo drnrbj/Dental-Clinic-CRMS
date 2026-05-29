@@ -13,28 +13,25 @@ Route::middleware(['auth'])->group(function () {
     // Dashboard
     Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
 
-    // Patients
-    Route::get('/patients',          [PatientController::class, 'index'])->name('patients.index');
-    Route::post('/patients',         [PatientController::class, 'store'])->name('patients.store');
-    Route::get('/patients/{patient}',      [PatientController::class, 'show'])->name('patients.show');
-    Route::get('/patients/{patient}/edit', [PatientController::class, 'edit'])->name('patients.edit');
-    Route::put('/patients/{patient}',      [PatientController::class, 'update'])->name('patients.update');
+    // Patients — resource + toggleStatus
+    Route::resource('patients', PatientController::class);
+    Route::patch('/patients/{patient}/toggle-status', [PatientController::class, 'toggleStatus'])
+         ->name('patients.toggle-status');
 
-    // Appointments
-    Route::get('/appointments',   [AppointmentController::class, 'index'])->name('appointments.index');
-    Route::post('/appointments',  [AppointmentController::class, 'store'])->name('appointments.store');
-    Route::get('/appointments/{appointment}',      [AppointmentController::class, 'show'])->name('appointments.show');
-    Route::get('/appointments/{appointment}/edit', [AppointmentController::class, 'edit'])->name('appointments.edit');
-    Route::put('/appointments/{appointment}',      [AppointmentController::class, 'update'])->name('appointments.update');
+    // Appointments — resource
+    Route::resource('appointments', AppointmentController::class);
 
-    // Treatments
-    Route::get('/treatments', [TreatmentController::class, 'index'])->name('treatments.index');
+    // Treatments — resource (wired later)
+    Route::resource('treatments', TreatmentController::class)->only(['index', 'show', 'store']);
 
-    // Billing
-    Route::get('/billing', [BillingController::class, 'index'])->name('billing.index');
+    // Billing — resource (wired later)
+    Route::resource('billing', BillingController::class)->only(['index', 'show']);
 
-    // Auth
-    Route::post('/logout', [App\Http\Controllers\Auth\AuthenticatedSessionController::class, 'destroy'])->name('logout');
+    // Logout
+    Route::post('/logout', [App\Http\Controllers\Auth\AuthenticatedSessionController::class, 'destroy'])
+         ->name('logout');
 });
 
-require __DIR__.'/auth.php';
+if (file_exists(__DIR__.'/auth.php')) {
+    require __DIR__.'/auth.php';
+}
