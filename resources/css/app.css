@@ -1,0 +1,104 @@
+@import 'tailwindcss';
+
+@source '../../vendor/laravel/framework/src/Illuminate/Pagination/resources/views/*.blade.php';
+@source '../../storage/framework/views/*.php';
+@source '../**/*.blade.php';
+@source '../**/*.js';
+
+@theme {
+    --font-sans: 'Instrument Sans', ui-sans-serif, system-ui, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji',
+        'Segoe UI Symbol', 'Noto Color Emoji';
+}
+
+/* Add this to resources/css/app.css after the Tailwind directives */
+
+/* FullCalendar: remove default border, match app design tokens */
+.fullcalendar-wrap .fc {
+  font-family: inherit;
+  font-size: 0.8125rem;
+}
+
+.fullcalendar-wrap .fc-toolbar-title {
+  font-size: 1rem;
+  font-weight: 600;
+  color: #111827;
+}
+
+.fullcalendar-wrap .fc-button {
+  background-color: white !important;
+  border: 1px solid #e5e7eb !important;
+  color: #374151 !important;
+  font-size: 0.75rem !important;
+  font-weight: 500 !important;
+  padding: 0.35rem 0.65rem !important;
+  border-radius: 0.5rem !important;
+  box-shadow: none !important;
+  transition: background-color 0.15s !important;
+}
+
+.fullcalendar-wrap .fc-button:hover {
+  background-color: #f9fafb !important;
+}
+
+.fullcalendar-wrap .fc-button-active,
+.fullcalendar-wrap .fc-button:focus {
+  background-color: #eff6ff !important;
+  border-color: #bfdbfe !important;
+  color: #1d4ed8 !important;
+  outline: none !important;
+  box-shadow: none !important;
+}
+
+.fullcalendar-wrap .fc-daygrid-day:hover {
+  background-color: #f0f9ff;
+  cursor: pointer;
+}
+
+.fullcalendar-wrap .fc-daygrid-day-number {
+  font-size: 0.75rem;
+  color: #6b7280;
+  padding: 4px 6px;
+}
+
+.fullcalendar-wrap .fc-col-header-cell-cushion {
+  font-size: 0.6875rem;
+  font-weight: 600;
+  color: #9ca3af;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  padding: 6px 0;
+}
+
+.fullcalendar-wrap .fc-day-today .fc-daygrid-day-number {
+  background-color: #2563eb;
+  color: white;
+  border-radius: 50%;
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 2px;
+}
+
+.fullcalendar-wrap .fc-day-today {
+  background-color: #f0f7ff !important;
+}
+
+.fullcalendar-wrap .fc-event {
+  border-radius: 4px !important;
+  font-size: 0.6875rem !important;
+  font-weight: 500 !important;
+  padding: 1px 5px !important;
+  cursor: pointer;
+}
+
+.fullcalendar-wrap .fc-scrollgrid {
+  border-radius: 0;
+  border: none !important;
+}
+
+.fullcalendar-wrap .fc-scrollgrid td,
+.fullcalendar-wrap .fc-scrollgrid th {
+  border-color: #f3f4f6 !important;
+}
