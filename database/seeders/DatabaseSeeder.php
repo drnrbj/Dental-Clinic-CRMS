@@ -10,38 +10,23 @@ class DatabaseSeeder extends Seeder
 {
     public function run(): void
     {
-        // Create admin user
+        // Seed users
         User::firstOrCreate(
             ['email' => 'admin@bobbydent.com'],
-            [
-                'name'     => 'Dr. Bobby Reyes',
-                'password' => Hash::make('password'),
-                'role'     => 'admin',
-            ]
+            ['name' => 'Admin Cruz', 'password' => Hash::make('password'), 'role' => 'admin']
         );
-
-        // Create receptionist
         User::firstOrCreate(
-            ['email' => 'receptionist@bobbydent.com'],
-            [
-                'name'     => 'Ana Lim',
-                'password' => Hash::make('password'),
-                'role'     => 'receptionist',
-            ]
+            ['email' => 'reception@bobbydent.com'],
+            ['name' => 'Maria Gonzales', 'password' => Hash::make('password'), 'role' => 'receptionist']
         );
-
-        // Create dentist
         User::firstOrCreate(
             ['email' => 'dentist@bobbydent.com'],
-            [
-                'name'     => 'Dr. Marco Santos',
-                'password' => Hash::make('password'),
-                'role'     => 'dentist',
-            ]
+            ['name' => 'Dr. Ana Reyes', 'password' => Hash::make('password'), 'role' => 'dentist']
         );
 
         $this->call([
             PatientSeeder::class,
+            AppointmentSeeder::class,
         ]);
     }
 }

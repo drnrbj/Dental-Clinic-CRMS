@@ -1,53 +1,53 @@
-import { useState } from 'react'
+import { useState, useRef } from 'react'
 import { usePage } from '@inertiajs/react'
 import AppLayout from '@/Layouts/AppLayout'
 import AppointmentModal from '@/Components/Appointments/AppointmentModal'
+import AppointmentDetailPanel from '@/Components/Appointments/AppointmentDetailPanel'
 import StatusBadge from '@/Components/StatusBadge'
 import FullCalendar from '@fullcalendar/react'
 import dayGridPlugin from '@fullcalendar/daygrid'
 import timeGridPlugin from '@fullcalendar/timegrid'
 import interactionPlugin from '@fullcalendar/interaction'
 
-// Current month: May 2026
-const HARDCODED_EVENTS = [
-  { title: 'Maria Santos – Cleaning',         date: '2026-05-05', color: '#2563eb' },
-  { title: 'Juan dela Cruz – Extraction',     date: '2026-05-07', color: '#16a34a' },
-  { title: 'Rosario Bautista – Braces',       date: '2026-05-09', color: '#ca8a04' },
-  { title: 'Eduardo Ramos – Root Canal',      date: '2026-05-12', color: '#2563eb' },
-  { title: 'Carina Mendoza – Whitening',      date: '2026-05-14', color: '#16a34a' },
-  { title: 'Roberto Flores – Check-up',       date: '2026-05-16', color: '#2563eb' },
-  { title: 'Analiza Reyes – Filling',         date: '2026-05-19', color: '#ca8a04' },
-  { title: 'Carlos Mendoza – Consultation',   date: '2026-05-21', color: '#2563eb' },
-  { title: 'Ligaya Villanueva – Cleaning',    date: '2026-05-26', color: '#16a34a' },
-  { title: 'Maria Santos – Follow-up',        date: '2026-05-29', color: '#2563eb' },
-]
-
-const TODAY_SCHEDULE = [
-  { time: '09:00 AM', patient: 'Maria Santos',    procedure: 'Follow-up Consultation', dentist: 'Dr. Ana Reyes',     status: 'confirmed' },
-  { time: '10:30 AM', patient: 'Roberto Flores',  procedure: 'Dental Cleaning',        dentist: 'Dr. Marco Santos',  status: 'completed' },
-  { time: '11:00 AM', patient: 'Carina Mendoza',  procedure: 'Tooth Whitening',        dentist: 'Dr. Ana Reyes',     status: 'confirmed' },
-  { time: '01:00 PM', patient: 'Eduardo Ramos',   procedure: 'Root Canal Session 2',   dentist: 'Dr. Liza Torres',   status: 'pending' },
-  { time: '03:00 PM', patient: 'Analiza Reyes',   procedure: 'Tooth Filling',          dentist: 'Dr. Marco Santos',  status: 'confirmed' },
-]
-
 export default function AppointmentsIndex() {
-  const { flash } = usePage().props
-  const [modalOpen, setModalOpen] = useState(false)
-  const [selectedDate, setSelectedDate] = useState('')
-  const [selectedEvent, setSelectedEvent] = useState(null)
-  const [flashDismissed, setFlashDismissed] = useState(false)
+  const { todayAppointments, dentists, flash, auth } = usePage().props
 
-  const handleDateClick = (info) => {
-    setSelectedDate(info.dateStr)
-    setModalOpen(true)
+  const calendarRef = useRef(null)
+
+  const [modalOpen, setModalOpen]                   = useState(false)
+  const [selectedDate, setSelectedDate]             = useState('')
+  const [detailOpen, setDetailOpen]                 = useState(false)
+  const [selectedAppointment, setSelectedAppointment] = useState(null)
+  const [flashDismissed, setFlashDismissed]         = useState(false)
+
+  // ── Load appointment detail from API ────────────────────────────────────────
+  const openDetail = (id) => {
+    fetch(`/appointments/${id}`, {
+      headers: { 'Accept': 'application/json' },
+    })
+      .then(r => r.json())
+      .then(data => {
+        setSelectedAppointment(data)
+        setDetailOpen(true)
+      })
   }
 
-  const handleEventClick = (info) => {
-    setSelectedEvent({
-      title: info.event.title,
-      date:  info.event.startStr,
-      color: info.event.backgroundColor,
-    })
+  // ── After a status change: refetch calendar events + close panel ─────────
+  const handleStatusChange = () => {
+    calendarRef.current?.getApi().refetchEvents()
+    setDetailOpen(false)
+    setSelectedAppointment(null)
+  }
+
+  // ── FullCalendar events feed from API ────────────────────────────────────
+  const fetchEvents = (info, successCallback, failureCallback) => {
+    fetch(
+      `/appointments?start=${info.startStr}&end=${info.endStr}`,
+      { headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' } }
+    )
+      .then(r => r.json())
+      .then(data => successCallback(data))
+      .catch(failureCallback)
   }
 
   return (
@@ -68,7 +68,7 @@ export default function AppointmentsIndex() {
       <div className="flex items-center justify-between mb-5">
         <div>
           <h1 className="text-xl font-bold text-gray-900">Appointments</h1>
-          <p className="text-sm text-gray-500 mt-0.5">Click a date to schedule a new appointment</p>
+          <p className="text-sm text-gray-500 mt-0.5">Click a date or event to manage appointments</p>
         </div>
         <button
           onClick={() => { setSelectedDate(''); setModalOpen(true) }}
@@ -81,28 +81,30 @@ export default function AppointmentsIndex() {
         </button>
       </div>
 
-      {/* Event detail banner */}
-      {selectedEvent && (
-        <div className="flex items-center justify-between bg-blue-50 border border-blue-100 rounded-lg px-4 py-2.5 mb-4">
-          <div className="flex items-center gap-3">
-            <div className="w-2.5 h-2.5 rounded-full flex-shrink-0" style={{ backgroundColor: selectedEvent.color }} />
-            <span className="text-sm font-medium text-blue-800">{selectedEvent.title}</span>
-            <span className="text-xs text-blue-500">{selectedEvent.date}</span>
+      {/* Legend */}
+      <div className="flex flex-wrap items-center gap-4 mb-4">
+        {[
+          { label: 'Pending',   color: '#ca8a04' },
+          { label: 'Confirmed', color: '#2563eb' },
+          { label: 'Ongoing',   color: '#7c3aed' },
+          { label: 'Completed', color: '#16a34a' },
+          { label: 'Cancelled', color: '#dc2626' },
+          { label: 'No Show',   color: '#6b7280' },
+        ].map(item => (
+          <div key={item.label} className="flex items-center gap-1.5">
+            <span className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: item.color }} />
+            <span className="text-xs text-gray-500">{item.label}</span>
           </div>
-          <button onClick={() => setSelectedEvent(null)} className="text-blue-400 hover:text-blue-600">
-            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
-            </svg>
-          </button>
-        </div>
-      )}
+        ))}
+      </div>
 
       {/* Two-column layout */}
       <div className="flex flex-col lg:flex-row gap-5">
-        {/* Calendar (65%) */}
+        {/* Calendar */}
         <div className="lg:w-2/3">
           <div className="bg-white border border-gray-200 rounded-xl shadow-sm p-4 fullcalendar-wrap">
             <FullCalendar
+              ref={calendarRef}
               plugins={[dayGridPlugin, timeGridPlugin, interactionPlugin]}
               initialView="dayGridMonth"
               headerToolbar={{
@@ -111,9 +113,15 @@ export default function AppointmentsIndex() {
                 right:  'dayGridMonth,timeGridWeek,timeGridDay',
               }}
               height="auto"
-              events={HARDCODED_EVENTS}
-              dateClick={handleDateClick}
-              eventClick={handleEventClick}
+              events={fetchEvents}
+              dateClick={(info) => {
+                setSelectedDate(info.dateStr)
+                setModalOpen(true)
+              }}
+              eventClick={(info) => {
+                const id = info.event.extendedProps?.id
+                if (id) openDetail(id)
+              }}
               eventDisplay="block"
               dayMaxEvents={3}
               eventBorderColor="transparent"
@@ -122,29 +130,42 @@ export default function AppointmentsIndex() {
           </div>
         </div>
 
-        {/* Today's schedule (35%) */}
+        {/* Today's schedule */}
         <div className="lg:w-1/3">
           <div className="bg-white border border-gray-200 rounded-xl shadow-sm overflow-hidden">
             <div className="px-5 py-4 border-b border-gray-100">
               <h2 className="text-sm font-semibold text-gray-900">Today's Schedule</h2>
-              <p className="text-xs text-gray-500 mt-0.5">May 29, 2026</p>
+              <p className="text-xs text-gray-500 mt-0.5">
+                {new Date().toLocaleDateString('en-PH', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
+              </p>
             </div>
-            <div className="divide-y divide-gray-50">
-              {TODAY_SCHEDULE.map((appt, i) => (
-                <div key={i} className="px-4 py-3.5 hover:bg-gray-50 transition-colors">
-                  <div className="flex items-start justify-between gap-2 mb-1">
-                    <span className="text-xs font-semibold text-gray-900">{appt.time}</span>
-                    <StatusBadge status={appt.status} />
-                  </div>
-                  <p className="text-sm font-medium text-gray-800">{appt.patient}</p>
-                  <p className="text-xs text-gray-500">{appt.procedure}</p>
-                  <p className="text-xs text-gray-400 mt-0.5">{appt.dentist}</p>
-                  <button className="mt-1.5 text-xs text-blue-600 hover:text-blue-800 font-medium transition-colors">
-                    View Details →
+
+            {todayAppointments?.length === 0 ? (
+              <div className="px-5 py-10 text-center">
+                <svg className="w-10 h-10 text-gray-200 mx-auto mb-2" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                </svg>
+                <p className="text-gray-400 text-sm">No appointments today</p>
+              </div>
+            ) : (
+              <div className="divide-y divide-gray-50">
+                {todayAppointments?.map(appt => (
+                  <button
+                    key={appt.id}
+                    onClick={() => openDetail(appt.id)}
+                    className="w-full text-left px-4 py-3.5 hover:bg-gray-50 transition-colors"
+                  >
+                    <div className="flex items-start justify-between gap-2 mb-1">
+                      <span className="text-xs font-semibold text-gray-900">{appt.time}</span>
+                      <StatusBadge status={appt.status} />
+                    </div>
+                    <p className="text-sm font-medium text-gray-800">{appt.patient_name}</p>
+                    <p className="text-xs text-gray-500">{appt.type}</p>
+                    <p className="text-xs text-gray-400 mt-0.5">{appt.dentist_name}</p>
                   </button>
-                </div>
-              ))}
-            </div>
+                ))}
+              </div>
+            )}
           </div>
         </div>
       </div>
@@ -155,8 +176,22 @@ export default function AppointmentsIndex() {
           open={modalOpen}
           onClose={() => setModalOpen(false)}
           defaultDate={selectedDate}
+          dentists={dentists}
+          onSuccess={() => {
+            calendarRef.current?.getApi().refetchEvents()
+            setModalOpen(false)
+          }}
         />
       )}
+
+      {/* Detail slide-in panel */}
+      <AppointmentDetailPanel
+        appointment={selectedAppointment}
+        open={detailOpen}
+        onClose={() => { setDetailOpen(false); setSelectedAppointment(null) }}
+        onStatusChange={handleStatusChange}
+        auth={auth}
+      />
     </AppLayout>
   )
 }

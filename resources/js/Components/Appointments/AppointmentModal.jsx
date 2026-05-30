@@ -1,4 +1,4 @@
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import { useForm } from '@inertiajs/react'
 
 const inputClass =
@@ -13,8 +13,7 @@ const textareaClass =
 function Label({ children, required }) {
   return (
     <label className="block text-sm font-medium text-gray-700 mb-1">
-      {children}
-      {required && <span className="text-red-500 ml-0.5">*</span>}
+      {children}{required && <span className="text-red-500 ml-0.5">*</span>}
     </label>
   )
 }
@@ -24,58 +23,116 @@ function FieldError({ message }) {
   return <p className="text-red-500 text-xs mt-1">{message}</p>
 }
 
-const TIME_SLOTS = [
-  '08:00 AM', '09:00 AM', '10:00 AM', '11:00 AM',
-  '12:00 PM', '01:00 PM', '02:00 PM', '03:00 PM',
-  '04:00 PM', '05:00 PM',
-]
-
 const APPOINTMENT_TYPES = [
-  'Cleaning',
-  'Check-up',
-  'Extraction',
-  'Filling',
-  'Root Canal',
-  'Orthodontic',
-  'Whitening',
-  'Consultation',
+  { value: 'cleaning',      label: 'Cleaning' },
+  { value: 'checkup',       label: 'Check-up' },
+  { value: 'extraction',    label: 'Extraction' },
+  { value: 'filling',       label: 'Filling' },
+  { value: 'root_canal',    label: 'Root Canal' },
+  { value: 'orthodontic',   label: 'Orthodontic' },
+  { value: 'whitening',     label: 'Whitening' },
+  { value: 'consultation',  label: 'Consultation' },
 ]
 
-const DENTISTS = [
-  'Dr. Ana Reyes',
-  'Dr. Marco Santos',
-  'Dr. Liza Torres',
-]
-
-export default function AppointmentModal({ open, onClose, defaultDate }) {
+export default function AppointmentModal({ open, onClose, defaultDate, dentists = [], onSuccess }) {
   const form = useForm({
-    patient_search:   '',
-    dentist:          '',
-    date:             defaultDate || '',
-    time:             '',
-    type:             '',
-    notes:            '',
+    patient_id:        '',
+    dentist_id:        '',
+    appointment_date:  defaultDate || '',
+    appointment_time:  '',
+    duration_minutes:  60,
+    type:              '',
+    remarks:           '',
   })
 
-  useEffect(() => {
-    if (defaultDate) {
-      form.setData('date', defaultDate)
-    }
-  }, [defaultDate])
+  // ── Patient search state ──────────────────────────────────────────────────
+  const [patientSearch, setPatientSearch]   = useState('')
+  const [patientResults, setPatientResults] = useState([])
+  const [selectedPatient, setSelectedPatient] = useState(null)
+  const [showDropdown, setShowDropdown]     = useState(false)
 
+  // ── Slot state ────────────────────────────────────────────────────────────
+  const [slots, setSlots]           = useState([])
+  const [loadingSlots, setLoadingSlots] = useState(false)
+
+  // Escape key
   useEffect(() => {
-    const handler = (e) => {
-      if (e.key === 'Escape') onClose()
-    }
+    const handler = (e) => { if (e.key === 'Escape') onClose() }
     window.addEventListener('keydown', handler)
     return () => window.removeEventListener('keydown', handler)
   }, [onClose])
 
+  // Pre-fill date from calendar click
+  useEffect(() => {
+    if (defaultDate) form.setData('appointment_date', defaultDate)
+  }, [defaultDate])
+
+  // ── Patient autocomplete ──────────────────────────────────────────────────
+  useEffect(() => {
+    if (patientSearch.length < 2) {
+      setPatientResults([])
+      setShowDropdown(false)
+      return
+    }
+    const debounce = setTimeout(() => {
+      fetch(`/patients?search=${encodeURIComponent(patientSearch)}&per_page=5&status=active`, {
+        headers: { 'Accept': 'application/json' },
+      })
+        .then(r => r.json())
+        .then(data => {
+          setPatientResults(data.data ?? [])
+          setShowDropdown(true)
+        })
+    }, 300)
+    return () => clearTimeout(debounce)
+  }, [patientSearch])
+
+  const selectPatient = (patient) => {
+    setSelectedPatient(patient)
+    setPatientSearch(patient.full_name)
+    setShowDropdown(false)
+    form.setData('patient_id', patient.id)
+  }
+
+  // ── Available slots ───────────────────────────────────────────────────────
+  const loadSlots = (dentistId, date) => {
+    if (!dentistId || !date) return
+    setLoadingSlots(true)
+    fetch(`/appointments/available-slots?dentist_id=${dentistId}&date=${date}`, {
+      headers: { 'Accept': 'application/json' },
+    })
+      .then(r => r.json())
+      .then(data => {
+        setSlots(data)
+        // Clear selected time if it's now unavailable
+        const still = data.find(s => s.time === form.data.appointment_time)
+        if (!still?.available) form.setData('appointment_time', '')
+      })
+      .finally(() => setLoadingSlots(false))
+  }
+
+  const handleDentistChange = (e) => {
+    const id = e.target.value
+    form.setData('dentist_id', id)
+    loadSlots(id, form.data.appointment_date)
+  }
+
+  const handleDateChange = (e) => {
+    const date = e.target.value
+    form.setData('appointment_date', date)
+    loadSlots(form.data.dentist_id, date)
+  }
+
+  // ── Submit ────────────────────────────────────────────────────────────────
   const handleSubmit = (e) => {
     e.preventDefault()
     form.post('/appointments', {
       onSuccess: () => {
         form.reset()
+        setSelectedPatient(null)
+        setPatientSearch('')
+        setSlots([])
+        onSuccess?.()
         onClose()
       },
     })
@@ -90,124 +147,157 @@ export default function AppointmentModal({ open, onClose, defaultDate }) {
         <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100 sticky top-0 bg-white z-10 rounded-t-2xl">
           <div>
             <h2 className="text-base font-bold text-gray-900">New Appointment</h2>
-            <p className="text-xs text-gray-500 mt-0.5">Fill in the appointment details</p>
+            <p className="text-xs text-gray-500 mt-0.5">Schedule a new appointment</p>
           </div>
-          <button
-            type="button"
-            onClick={onClose}
-            className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
-            aria-label="Close modal"
-          >
+          <button type="button" onClick={onClose} className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-colors">
             <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
             </svg>
           </button>
         </div>
 
-        {/* Form */}
         <form onSubmit={handleSubmit} className="px-6 py-5 space-y-4">
+
           {/* Patient search */}
           <div>
             <Label required>Patient</Label>
             <div className="relative">
-              <svg
-                className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400"
-                fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}
-              >
+              <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
               </svg>
               <input
                 type="text"
-                value={form.data.patient_search}
-                onChange={e => form.setData('patient_search', e.target.value)}
-                className={`${inputClass} pl-9`}
-                placeholder="Search patient by name or ID..."
+                value={patientSearch}
+                onChange={e => {
+                  setPatientSearch(e.target.value)
+                  if (selectedPatient) {
+                    setSelectedPatient(null)
+                    form.setData('patient_id', '')
+                  }
+                }}
+                onFocus={() => patientResults.length > 0 && setShowDropdown(true)}
+                className={`${inputClass} pl-9 ${selectedPatient ? 'border-green-300 bg-green-50' : ''}`}
+                placeholder="Type patient name or ID..."
+                autoComplete="off"
               />
+
+              {/* Selected indicator */}
+              {selectedPatient && (
+                <div className="absolute right-3 top-1/2 -translate-y-1/2">
+                  <svg className="w-4 h-4 text-green-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                  </svg>
+                </div>
+              )}
+
+              {/* Dropdown */}
+              {showDropdown && patientResults.length > 0 && (
+                <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-gray-200 rounded-xl shadow-lg z-20 overflow-hidden">
+                  {patientResults.map(patient => (
+                    <button
+                      key={patient.id}
+                      type="button"
+                      onClick={() => selectPatient(patient)}
+                      className="w-full text-left px-4 py-2.5 hover:bg-blue-50 transition-colors"
+                    >
+                      <p className="text-sm font-medium text-gray-900">{patient.full_name}</p>
+                      <p className="text-xs text-gray-400">{patient.patient_code} · {patient.display_mobile}</p>
+                    </button>
+                  ))}
+                </div>
+              )}
+
+              {showDropdown && patientSearch.length >= 2 && patientResults.length === 0 && (
+                <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-gray-200 rounded-xl shadow-lg z-20 px-4 py-3">
+                  <p className="text-sm text-gray-400">No patients found for "{patientSearch}"</p>
+                </div>
+              )}
             </div>
-            <p className="text-xs text-gray-400 mt-1">Live search will be wired in a later phase.</p>
-            <FieldError message={form.errors.patient_search} />
+            <FieldError message={form.errors.patient_id} />
           </div>
 
           {/* Dentist */}
           <div>
             <Label required>Dentist</Label>
-            <select
-              value={form.data.dentist}
-              onChange={e => form.setData('dentist', e.target.value)}
-              className={selectClass}
-            >
+            <select value={form.data.dentist_id} onChange={handleDentistChange} className={selectClass}>
               <option value="">Select dentist</option>
-              {DENTISTS.map(d => (
-                <option key={d} value={d}>{d}</option>
+              {dentists.map(d => (
+                <option key={d.id} value={d.id}>{d.name}</option>
               ))}
             </select>
-            <FieldError message={form.errors.dentist} />
+            <FieldError message={form.errors.dentist_id} />
           </div>
 
-          {/* Date + Time */}
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <Label required>Date</Label>
-              <input
-                type="date"
-                value={form.data.date}
-                onChange={e => form.setData('date', e.target.value)}
-                className={inputClass}
-              />
-              <FieldError message={form.errors.date} />
-            </div>
-            <div>
-              <Label required>Time</Label>
-              <select
-                value={form.data.time}
-                onChange={e => form.setData('time', e.target.value)}
-                className={selectClass}
-              >
-                <option value="">Select time</option>
-                {TIME_SLOTS.map(t => (
-                  <option key={t} value={t}>{t}</option>
-                ))}
-              </select>
-              <FieldError message={form.errors.time} />
-            </div>
+          {/* Date */}
+          <div>
+            <Label required>Date</Label>
+            <input
+              type="date"
+              value={form.data.appointment_date}
+              onChange={handleDateChange}
+              min={new Date().toISOString().split('T')[0]}
+              className={inputClass}
+            />
+            <FieldError message={form.errors.appointment_date} />
+          </div>
+
+          {/* Time slots */}
+          <div>
+            <Label required>Time</Label>
+            <select
+              value={form.data.appointment_time}
+              onChange={e => form.setData('appointment_time', e.target.value)}
+              className={selectClass}
+              disabled={loadingSlots}
+            >
+              <option value="">
+                {loadingSlots
+                  ? 'Checking availability...'
+                  : slots.length === 0
+                    ? 'Select dentist and date first'
+                    : 'Select a time slot'}
+              </option>
+              {slots.map(slot => (
+                <option
+                  key={slot.time}
+                  value={slot.time}
+                  disabled={!slot.available}
+                  className={!slot.available ? 'text-gray-400' : ''}
+                >
+                  {slot.label}{!slot.available ? ' (Unavailable)' : ''}
+                </option>
+              ))}
+            </select>
+            <FieldError message={form.errors.appointment_time} />
           </div>
 
           {/* Type */}
           <div>
             <Label required>Appointment Type</Label>
-            <select
-              value={form.data.type}
-              onChange={e => form.setData('type', e.target.value)}
-              className={selectClass}
-            >
+            <select value={form.data.type} onChange={e => form.setData('type', e.target.value)} className={selectClass}>
               <option value="">Select type</option>
               {APPOINTMENT_TYPES.map(t => (
-                <option key={t} value={t}>{t}</option>
+                <option key={t.value} value={t.value}>{t.label}</option>
               ))}
             </select>
             <FieldError message={form.errors.type} />
           </div>
 
-          {/* Notes */}
+          {/* Remarks */}
           <div>
-            <Label>Notes</Label>
+            <Label>Remarks</Label>
             <textarea
-              value={form.data.notes}
-              onChange={e => form.setData('notes', e.target.value)}
+              value={form.data.remarks}
+              onChange={e => form.setData('remarks', e.target.value)}
               className={textareaClass}
-              rows={3}
-              placeholder="Optional notes for this appointment..."
+              rows={2}
+              placeholder="Optional notes..."
             />
-            <FieldError message={form.errors.notes} />
           </div>
 
           {/* Footer */}
           <div className="flex items-center justify-end gap-3 pt-4 border-t border-gray-100">
-            <button
-              type="button"
-              onClick={onClose}
-              className="px-4 py-2 text-sm font-medium text-gray-700 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors"
-            >
+            <button type="button" onClick={onClose} className="px-4 py-2 text-sm font-medium text-gray-700 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors">
               Cancel
             </button>
             <button
@@ -221,11 +311,9 @@ export default function AppointmentModal({ open, onClose, defaultDate }) {
                     <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
                     <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
                   </svg>
-                  <span>Scheduling...</span>
+                  Scheduling...
                 </>
-              ) : (
-                <span>Schedule Appointment</span>
-              )}
+              ) : 'Schedule Appointment'}
             </button>
           </div>
         </form>
