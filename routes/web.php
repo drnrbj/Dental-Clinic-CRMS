@@ -5,21 +5,22 @@ use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\PatientController;
 use App\Http\Controllers\AppointmentController;
 use App\Http\Controllers\TreatmentController;
+use App\Http\Controllers\MyTreatmentsController;
 use App\Http\Controllers\BillingController;
 use Illuminate\Support\Facades\Route;
 
-// ── Guest routes ──────────────────────────────────────────────────────────────
+// ── Guest ──────────────────────────────────────────────────────────────────────
 Route::middleware('guest')->group(function () {
-    Route::get('/login', [AuthController::class, 'showLogin'])->name('login');
+    Route::get('/login',  [AuthController::class, 'showLogin'])->name('login');
     Route::post('/login', [AuthController::class, 'login']);
 });
 
-// ── Auth routes ───────────────────────────────────────────────────────────────
+// ── Logout ─────────────────────────────────────────────────────────────────────
 Route::post('/logout', [AuthController::class, 'logout'])
     ->name('logout')
     ->middleware('auth');
 
-// ── Protected routes ──────────────────────────────────────────────────────────
+// ── Protected ─────────────────────────────────────────────────────────────────
 Route::middleware('auth')->group(function () {
     Route::redirect('/', '/dashboard');
 
@@ -32,10 +33,22 @@ Route::middleware('auth')->group(function () {
          ->name('patients.toggle-status');
 
     // Appointments
-    Route::resource('appointments', AppointmentController::class);
+    // NOTE: available-slots must come BEFORE the resource to avoid route collision
+    Route::get('/appointments/available-slots', [AppointmentController::class, 'availableSlots'])
+         ->name('appointments.slots');
+    Route::resource('appointments', AppointmentController::class)->except(['show']);
+    Route::get('/appointments/{appointment}',  [AppointmentController::class, 'show'])
+         ->name('appointments.show');
+    Route::patch('/appointments/{appointment}/status', [AppointmentController::class, 'updateStatus'])
+         ->name('appointments.status');
 
-    // Treatments (wired in later phase)
-    Route::resource('treatments', TreatmentController::class)->only(['index', 'show', 'store']);
+    // Treatments — admin/receptionist list view
+    Route::resource('treatments', TreatmentController::class)
+         ->only(['index', 'store', 'show', 'update']);
+
+    // My Treatments — dentist workflow page
+    Route::get('/my-treatments', [MyTreatmentsController::class, 'index'])
+         ->name('my-treatments');
 
     // Billing (wired in later phase)
     Route::resource('billing', BillingController::class)->only(['index', 'show']);
