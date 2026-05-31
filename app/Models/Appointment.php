@@ -96,6 +96,11 @@ class Appointment extends Model
         return $this->hasMany(AppointmentStatusLog::class)->orderBy('created_at');
     }
 
+    public function invoice(): \Illuminate\Database\Eloquent\Relations\HasOne
+    {
+        return $this->hasOne(\App\Models\Invoice::class);
+    }
+
     // ─── Helpers ─────────────────────────────────────────────────────────────
 
     public function isEditable(): bool

@@ -41,4 +41,9 @@ class Treatment extends Model
     {
         return $this->belongsTo(User::class, 'dentist_id');
     }
+
+      public function invoice(): \Illuminate\Database\Eloquent\Relations\HasOne
+    {
+        return $this->hasOne(\App\Models\Invoice::class);
+    }
 }
