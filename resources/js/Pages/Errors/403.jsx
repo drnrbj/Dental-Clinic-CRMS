@@ -1,4 +1,7 @@
 import { Head, Link } from '@inertiajs/react'
+import { can } from '@/Utils/can'
+import EmptyState, { Icons } from '@/Components/EmptyState'
+import { SubmitButton } from '@/Components/Spinner'
 
 export default function Error403() {
   return (

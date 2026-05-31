@@ -2,6 +2,9 @@ import { useState } from 'react'
 import { Link, usePage, router } from '@inertiajs/react'
 import AppLayout from '@/Layouts/AppLayout'
 import TreatmentModal from '@/Components/Treatments/TreatmentModal'
+import { can } from '@/Utils/can'
+import EmptyState, { Icons } from '@/Components/EmptyState'
+import { SubmitButton } from '@/Components/Spinner'
 
 const TYPE_DISPLAY = {
   cleaning:          'Cleaning',

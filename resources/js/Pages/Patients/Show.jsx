@@ -5,6 +5,9 @@ import PersonalInfoTab from '@/Components/Patients/PersonalInfoTab'
 import AppointmentHistoryTab from '@/Components/Patients/AppointmentHistoryTab'
 import TreatmentHistoryTab from '@/Components/Patients/TreatmentHistoryTab'
 import PaymentHistoryTab from '@/Components/Patients/PaymentHistoryTab'
+import { can } from '@/Utils/can'
+import EmptyState, { Icons } from '@/Components/EmptyState'
+import { SubmitButton } from '@/Components/Spinner'
 
 const TABS = [
   { key: 'info',         label: 'Personal Info' },

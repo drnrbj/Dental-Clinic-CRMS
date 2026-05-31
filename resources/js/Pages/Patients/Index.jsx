@@ -3,6 +3,9 @@ import { Link, usePage, router } from '@inertiajs/react'
 import AppLayout from '@/Layouts/AppLayout'
 import PatientModal from '@/Components/Patients/PatientModal'
 import debounce from 'lodash/debounce'
+import { can } from '@/Utils/can'
+import EmptyState, { Icons } from '@/Components/EmptyState'
+import { SubmitButton } from '@/Components/Spinner'
 
 function Pagination({ links }) {
   if (!links || links.length <= 3) return null

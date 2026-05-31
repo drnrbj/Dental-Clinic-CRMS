@@ -1,4 +1,7 @@
 import { Head, Link } from '@inertiajs/react'
+import { can } from '@/Utils/can'
+import EmptyState, { Icons } from '@/Components/EmptyState'
+import { SubmitButton } from '@/Components/Spinner'
 
 function peso(val) {
   return '₱' + Number(val ?? 0).toLocaleString('en-PH', { minimumFractionDigits: 2 })
