@@ -14,14 +14,15 @@ import { SubmitButton } from '@/Components/Spinner'
 
 export default function AppointmentsIndex() {
   const { todayAppointments, dentists, flash, auth } = usePage().props
+  const user = auth.user
 
   const calendarRef = useRef(null)
 
-  const [modalOpen, setModalOpen]                   = useState(false)
-  const [selectedDate, setSelectedDate]             = useState('')
-  const [detailOpen, setDetailOpen]                 = useState(false)
+  const [modalOpen, setModalOpen] = useState(false)
+  const [selectedDate, setSelectedDate] = useState('')
+  const [detailOpen, setDetailOpen] = useState(false)
   const [selectedAppointment, setSelectedAppointment] = useState(null)
-  const [flashDismissed, setFlashDismissed]         = useState(false)
+  const [flashDismissed, setFlashDismissed] = useState(false)
 
   // ── Load appointment detail from API ────────────────────────────────────────
   const openDetail = (id) => {
@@ -73,26 +74,29 @@ export default function AppointmentsIndex() {
           <h1 className="text-xl font-bold text-gray-900">Appointments</h1>
           <p className="text-sm text-gray-500 mt-0.5">Click a date or event to manage appointments</p>
         </div>
-        <button
-          onClick={() => { setSelectedDate(''); setModalOpen(true) }}
-          className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium px-4 py-2 rounded-lg transition-colors"
-        >
-          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-            <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
-          </svg>
-          New Appointment
-        </button>
+        {/* New Appointment button - gated with can() */}
+        {can(user, 'appointments.create') && (
+          <button
+            onClick={() => { setSelectedDate(''); setModalOpen(true) }}
+            className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium px-4 py-2 rounded-lg transition-colors"
+          >
+            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
+            </svg>
+            New Appointment
+          </button>
+        )}
       </div>
 
       {/* Legend */}
       <div className="flex flex-wrap items-center gap-4 mb-4">
         {[
-          { label: 'Pending',   color: '#ca8a04' },
+          { label: 'Pending', color: '#ca8a04' },
           { label: 'Confirmed', color: '#2563eb' },
-          { label: 'Ongoing',   color: '#7c3aed' },
+          { label: 'Ongoing', color: '#7c3aed' },
           { label: 'Completed', color: '#16a34a' },
           { label: 'Cancelled', color: '#dc2626' },
-          { label: 'No Show',   color: '#6b7280' },
+          { label: 'No Show', color: '#6b7280' },
         ].map(item => (
           <div key={item.label} className="flex items-center gap-1.5">
             <span className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: item.color }} />
@@ -111,13 +115,15 @@ export default function AppointmentsIndex() {
               plugins={[dayGridPlugin, timeGridPlugin, interactionPlugin]}
               initialView="dayGridMonth"
               headerToolbar={{
-                left:   'prev,next today',
+                left: 'prev,next today',
                 center: 'title',
-                right:  'dayGridMonth,timeGridWeek,timeGridDay',
+                right: 'dayGridMonth,timeGridWeek,timeGridDay',
               }}
               height="auto"
               events={fetchEvents}
               dateClick={(info) => {
+                // Guard: only allow clicking date if user can create appointments
+                if (!can(user, 'appointments.create')) return
                 setSelectedDate(info.dateStr)
                 setModalOpen(true)
               }}
@@ -144,12 +150,12 @@ export default function AppointmentsIndex() {
             </div>
 
             {todayAppointments?.length === 0 ? (
-              <div className="px-5 py-10 text-center">
-                <svg className="w-10 h-10 text-gray-200 mx-auto mb-2" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                </svg>
-                <p className="text-gray-400 text-sm">No appointments today</p>
-              </div>
+              <EmptyState
+                icon={<Icons.Calendar />}
+                title="No appointments today"
+                description="Check the calendar for upcoming schedule."
+                className="py-10"
+              />
             ) : (
               <div className="divide-y divide-gray-50">
                 {todayAppointments?.map(appt => (

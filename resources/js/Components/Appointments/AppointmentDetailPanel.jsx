@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { Link } from '@inertiajs/react'
 import StatusBadge from '@/Components/StatusBadge'
+import { can } from '@/Utils/can'
 
 const TYPE_LABELS = {
   cleaning:     'Cleaning',
@@ -56,6 +57,13 @@ export default function AppointmentDetailPanel({ appointment, open, onClose, onS
         },
         body: JSON.stringify({ status }),
       })
+      
+      // 403 guard - add this before parsing JSON
+      if (res.status === 403) {
+        setError('You do not have permission to perform this action.')
+        return
+      }
+      
       const data = await res.json()
       if (res.ok && data.success) {
         onStatusChange()
@@ -85,6 +93,13 @@ export default function AppointmentDetailPanel({ appointment, open, onClose, onS
         },
         body: JSON.stringify({ status: 'cancelled', cancelled_reason: cancelReason }),
       })
+      
+      // 403 guard - add this before parsing JSON
+      if (res.status === 403) {
+        setError('You do not have permission to cancel this appointment.')
+        return
+      }
+      
       const data = await res.json()
       if (res.ok && data.success) {
         setCancelMode(false)
@@ -228,7 +243,8 @@ export default function AppointmentDetailPanel({ appointment, open, onClose, onS
                 {/* confirmed */}
                 {appointment.status === 'confirmed' && (
                   <div className="flex flex-wrap gap-2">
-                    {user?.role !== 'receptionist' && (
+                    {/* Start Treatment button - now using can() */}
+                    {can(user, 'appointments.start') && (
                       <ActionButton variant="purple" disabled={loading} onClick={() => submitStatus('ongoing')}>
                         ▶ Start Treatment
                       </ActionButton>

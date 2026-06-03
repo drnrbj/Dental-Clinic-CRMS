@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useForm } from '@inertiajs/react'
+import { SubmitButton } from '@/Components/Spinner'
 
 export function InvoiceModal({ open, onClose, appointment }) {
   const [discount, setDiscount] = useState(0)
@@ -108,10 +109,11 @@ export function InvoiceModal({ open, onClose, appointment }) {
 
           <div className="flex items-center justify-end gap-3 pt-2 border-t border-gray-100">
             <button type="button" onClick={onClose} className="px-4 py-2 text-sm font-medium text-gray-700 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors">Cancel</button>
-            <button type="submit" disabled={form.processing}
-              className="flex items-center gap-2 px-5 py-2 text-sm font-medium bg-blue-600 hover:bg-blue-700 disabled:opacity-60 disabled:cursor-not-allowed text-white rounded-lg transition-colors">
-              {form.processing ? 'Creating...' : 'Create Invoice'}
-            </button>
+            <SubmitButton 
+              processing={form.processing} 
+              label="Create Invoice" 
+              loadingLabel="Creating..." 
+            />
           </div>
         </form>
       </div>

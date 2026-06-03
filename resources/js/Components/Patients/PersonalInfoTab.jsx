@@ -1,4 +1,5 @@
 import { Link } from '@inertiajs/react'
+import { can } from '@/Utils/can'
 
 function InfoGroup({ title, children, editHref, canEdit }) {
   return (
@@ -28,7 +29,8 @@ function InfoField({ label, value }) {
 }
 
 export default function PersonalInfoTab({ patient, user }) {
-  const canEdit = ['admin', 'receptionist'].includes(user?.role)
+  // Changed from hardcoded role array to using can()
+  const canEdit = can(user, 'patients.edit')
   const editHref = `/patients/${patient.id}/edit`
 
   return (

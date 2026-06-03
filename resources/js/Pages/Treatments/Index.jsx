@@ -99,7 +99,15 @@ export default function TreatmentsIndex() {
             </thead>
             <tbody className="divide-y divide-gray-50">
               {treatments.data.length === 0 ? (
-                <tr><td colSpan={7} className="px-5 py-12 text-center text-gray-400 text-sm">No treatment records found.</td></tr>
+                <tr>
+                  <td colSpan={7}>
+                    <EmptyState
+                      icon={<Icons.Clipboard />}
+                      title="No treatment records"
+                      description="Treatments will appear here after they are recorded."
+                    />
+                  </td>
+                </tr>
               ) : (
                 treatments.data.map(t => (
                   <tr key={t.id} className="hover:bg-gray-50 transition-colors">

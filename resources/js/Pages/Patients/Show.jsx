@@ -74,8 +74,8 @@ export default function PatientShow() {
             </div>
           </div>
 
-          {/* Edit button */}
-          {['admin', 'receptionist'].includes(user.role) && (
+          {/* Edit button - changed to use can() */}
+          {can(user, 'patients.edit') && (
             <Link
               href={`/patients/${patient.id}/edit`}
               className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-gray-700 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors self-start"

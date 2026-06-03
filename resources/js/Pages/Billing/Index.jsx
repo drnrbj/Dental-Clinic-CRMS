@@ -31,7 +31,8 @@ function Pagination({ links }) {
 }
 
 export default function BillingIndex() {
-  const { pendingInvoices, invoices, flash } = usePage().props
+  const { pendingInvoices, invoices, flash, auth } = usePage().props
+  const user = auth.user
   const [invoiceModal, setInvoiceModal]           = useState(false)
   const [paymentModal, setPaymentModal]           = useState(false)
   const [selectedAppointment, setSelectedAppointment] = useState(null)
@@ -63,8 +64,12 @@ export default function BillingIndex() {
           {pendingInvoices.length > 0 && <span className="bg-amber-100 text-amber-700 text-xs px-2 py-0.5 rounded-full font-medium normal-case">{pendingInvoices.length}</span>}
         </h2>
         {pendingInvoices.length === 0 ? (
-          <div className="bg-white border border-gray-200 rounded-xl p-8 text-center">
-            <p className="text-gray-400 text-sm font-medium">All completed appointments have been invoiced</p>
+          <div className="bg-white border border-gray-200 rounded-xl overflow-hidden">
+            <EmptyState
+              icon={<Icons.Check />}
+              title="All caught up"
+              description="Every completed appointment has been invoiced."
+            />
           </div>
         ) : (
           <div className="bg-white border border-gray-200 rounded-xl shadow-sm overflow-hidden">
@@ -91,11 +96,13 @@ export default function BillingIndex() {
                       <td className="px-4 py-3.5 hidden lg:table-cell"><span className="text-xs bg-gray-100 text-gray-600 px-2 py-0.5 rounded-full">{appt.procedure}</span></td>
                       <td className="px-4 py-3.5 text-right font-semibold text-blue-600">{appt.cost_display}</td>
                       <td className="px-4 py-3.5">
-                        <button onClick={() => { setSelectedAppointment(appt); setInvoiceModal(true) }}
-                          className="flex items-center gap-1.5 text-xs font-medium text-white bg-blue-600 hover:bg-blue-700 px-3 py-1.5 rounded-lg transition-colors">
-                          <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" /></svg>
-                          Create Invoice
-                        </button>
+                        {can(user, 'billing.createInvoice') && (
+                          <button onClick={() => { setSelectedAppointment(appt); setInvoiceModal(true) }}
+                            className="flex items-center gap-1.5 text-xs font-medium text-white bg-blue-600 hover:bg-blue-700 px-3 py-1.5 rounded-lg transition-colors">
+                            <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" /></svg>
+                            Create Invoice
+                          </button>
+                        )}
                       </td>
                     </tr>
                   ))}
@@ -126,7 +133,15 @@ export default function BillingIndex() {
               </thead>
               <tbody className="divide-y divide-gray-50">
                 {invoices.data.length === 0 ? (
-                  <tr><td colSpan={8} className="px-5 py-12 text-center text-gray-400 text-sm">No invoices yet.</td></tr>
+                  <tr>
+                    <td colSpan={8}>
+                      <EmptyState
+                        icon={<Icons.Receipt />}
+                        title="No invoices yet"
+                        description="Create an invoice from a completed appointment above."
+                      />
+                    </td>
+                  </tr>
                 ) : invoices.data.map(inv => (
                   <tr key={inv.id} className="hover:bg-gray-50 transition-colors">
                     <td className="px-5 py-3.5 font-mono text-xs text-gray-600 whitespace-nowrap">{inv.invoice_number}</td>
@@ -140,7 +155,7 @@ export default function BillingIndex() {
                     <td className="px-4 py-3.5"><PaymentStatusBadge status={inv.payment_status} /></td>
                     <td className="px-4 py-3.5">
                       <div className="flex items-center gap-2">
-                        {inv.payment_status !== 'paid' && (
+                        {inv.payment_status !== 'paid' && can(user, 'billing.recordPayment') && (
                           <button onClick={() => { setSelectedInvoice(inv); setPaymentModal(true) }}
                             className="text-xs font-medium text-blue-600 hover:text-blue-800 transition-colors">
                             + Payment

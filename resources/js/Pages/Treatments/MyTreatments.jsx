@@ -51,11 +51,13 @@ function Pagination({ links }) {
 
 export default function MyTreatments() {
   const { readyToTreat, treatmentHistory, flash, auth } = usePage().props
+  const user = auth.user
 
   const [treatmentModal, setTreatmentModal]         = useState(false)
   const [currentAppointment, setCurrentAppointment] = useState(null)
   const [flashDismissed, setFlashDismissed]         = useState(false)
   const [startingId, setStartingId]                 = useState(null)
+  const [startError, setStartError]                 = useState('')
 
   const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content ?? ''
 
@@ -68,6 +70,7 @@ export default function MyTreatments() {
     }
 
     setStartingId(appt.id)
+    setStartError('')
 
     fetch(`/appointments/${appt.id}/status`, {
       method:  'PATCH',
@@ -78,12 +81,23 @@ export default function MyTreatments() {
       },
       body: JSON.stringify({ status: 'ongoing' }),
     })
-      .then(r => r.json())
+      .then(r => {
+        // 403 guard
+        if (r.status === 403) {
+          throw new Error('You do not have permission to start this treatment.')
+        }
+        return r.json()
+      })
       .then(data => {
         if (data.success) {
           setCurrentAppointment({ ...appt, status: 'ongoing' })
           setTreatmentModal(true)
+        } else {
+          setStartError(data.message ?? 'Something went wrong.')
         }
+      })
+      .catch(err => {
+        setStartError(err.message)
       })
       .finally(() => setStartingId(null))
   }
@@ -99,6 +113,13 @@ export default function MyTreatments() {
               <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
             </svg>
           </button>
+        </div>
+      )}
+
+      {/* Error display */}
+      {startError && (
+        <div className="bg-red-50 text-red-700 border border-red-200 rounded-lg px-4 py-3 mb-4 text-sm">
+          {startError}
         </div>
       )}
 
@@ -123,12 +144,12 @@ export default function MyTreatments() {
         </h2>
 
         {readyToTreat.length === 0 ? (
-          <div className="bg-white border border-gray-200 rounded-xl p-8 text-center">
-            <svg className="w-10 h-10 text-gray-200 mx-auto mb-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-            </svg>
-            <p className="text-gray-400 text-sm font-medium">No confirmed appointments today</p>
-            <p className="text-gray-300 text-xs mt-1">Check the Appointments calendar for upcoming schedule.</p>
+          <div className="bg-white border border-gray-200 rounded-xl overflow-hidden">
+            <EmptyState
+              icon={<Icons.Check />}
+              title="No confirmed appointments today"
+              description="Check the Appointments calendar for upcoming schedule."
+            />
           </div>
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -160,29 +181,33 @@ export default function MyTreatments() {
                     Treatment already recorded
                   </div>
                 ) : (
-                  <button
-                    onClick={() => handleStart(appt)}
-                    disabled={startingId === appt.id}
-                    className="w-full flex items-center justify-center gap-2 px-3 py-2 bg-blue-600 hover:bg-blue-700 disabled:opacity-60 disabled:cursor-not-allowed text-white text-sm font-medium rounded-lg transition-colors"
-                  >
-                    {startingId === appt.id ? (
-                      <>
-                        <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
-                          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
-                        </svg>
-                        Starting...
-                      </>
-                    ) : (
-                      <>
-                        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                          <path strokeLinecap="round" strokeLinejoin="round" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" />
-                          <path strokeLinecap="round" strokeLinejoin="round" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                        </svg>
-                        Start &amp; Record Treatment
-                      </>
-                    )}
-                  </button>
+                  can(user, 'treatments.create') ? (
+                    <button
+                      onClick={() => handleStart(appt)}
+                      disabled={startingId === appt.id}
+                      className="w-full flex items-center justify-center gap-2 px-3 py-2 bg-blue-600 hover:bg-blue-700 disabled:opacity-60 disabled:cursor-not-allowed text-white text-sm font-medium rounded-lg transition-colors"
+                    >
+                      {startingId === appt.id ? (
+                        <>
+                          <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
+                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                          </svg>
+                          Starting...
+                        </>
+                      ) : (
+                        <>
+                          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" />
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                          </svg>
+                          Start &amp; Record Treatment
+                        </>
+                      )}
+                    </button>
+                  ) : (
+                    <p className="text-xs text-gray-400 text-center italic py-2">View only</p>
+                  )
                 )}
               </div>
             ))}
@@ -197,11 +222,12 @@ export default function MyTreatments() {
         </h2>
 
         {treatmentHistory.data.length === 0 ? (
-          <div className="bg-white border border-gray-200 rounded-xl p-8 text-center">
-            <svg className="w-10 h-10 text-gray-200 mx-auto mb-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
-            </svg>
-            <p className="text-gray-400 text-sm font-medium">No treatments recorded yet</p>
+          <div className="bg-white border border-gray-200 rounded-xl overflow-hidden">
+            <EmptyState
+              icon={<Icons.Clipboard />}
+              title="No treatments recorded yet"
+              description="Treatments will appear here after they are recorded."
+            />
           </div>
         ) : (
           <>
