@@ -10,82 +10,87 @@ A web-based clinic management system built for dental practices — designed to 
 
 ---
 
-## Overview
+Built on Laravel 11 with an Inertia.js + React frontend and SQLite for local storage. Covers the full patient lifecycle — registration, appointment scheduling, treatment recording, and billing — with role-based access control scoped to three user types: **admin**, **receptionist**, and **dentist**.
 
-BobbyDent CRM covers the full patient lifecycle — from registration and appointment scheduling to treatment recording and billing. It's built as a single-page application feel using Inertia.js, meaning no API layer or separate frontend build: Laravel handles routing and data, React handles the UI, and Inertia bridges them seamlessly.
-
-The system implements role-based access control scoped to three user types: **admin**, **receptionist**, and **dentist** — each limited to the workflows relevant to their function.
-
----
-
-## Features
-
-- **Dashboard** — At-a-glance stats (patients, revenue, appointments), a Recharts weekly bar chart, recent appointments table, and today's live schedule
-- **Patient Management** — Searchable patient registry with full demographic, contact, emergency contact, and medical history forms
-- **Appointment Scheduling** — FullCalendar-powered month/week/day views with click-to-schedule, slot availability checking, and status tracking
-- **Treatment Recording** — Treatment entries tied directly to appointment status transitions
-- **Billing & Invoicing** — Invoice generation with partial payment tracking and downloadable PDF receipts via DomPDF
-- **Role-Based Access Control** — Admin, receptionist, and dentist roles with scoped permissions via Laravel Sanctum (session-based)
-
----
-
-## Tech Stack
-
-| Layer | Technology |
-|---|---|
-| Backend | Laravel 11 |
-| Frontend | React 18 (via Inertia.js) |
-| Styling | Tailwind CSS + @tailwindcss/forms |
-| Build tool | Vite |
-| Database | SQLite |
-| Auth | Laravel Sanctum (session-based) |
-| Calendar | FullCalendar (daygrid, timegrid, interaction) |
-| Charts | Recharts |
-| PDF | barryvdh/laravel-dompdf |
-
----
-
-## Architecture
-
-This project uses the **Inertia.js monolith pattern** — there is no REST API. Laravel controllers return `Inertia::render()` responses, passing typed props directly to React page components. All navigation uses Inertia's `<Link>` and `router` — no full page reloads, no separate API endpoints to maintain.
-
-```
-routes/web.php
-    └── Controller (auth + role middleware)
-            └── Inertia::render('PageName', [...props])
-                    └── React Page Component (receives props via usePage())
-                            └── AppLayout (persistent sidebar + topbar shell)
-```
-
-Forms use Inertia's `useForm` hook — validation errors from Laravel flow back automatically to the component's `form.errors` object without any manual wiring.
+Uses the Inertia.js monolith pattern: no separate API, no full page reloads. Laravel controllers pass typed props directly to React page components via `Inertia::render()`, and form validation errors flow back automatically through Inertia's `useForm` hook.
 
 ---
 
 ## Project Structure
 
 ```
+app/
+├── Http/
+│   ├── Controllers/
+│   │   ├── AuthController.php
+│   │   ├── DashboardController.php
+│   │   ├── PatientController.php
+│   │   ├── AppointmentController.php
+│   │   ├── TreatmentController.php
+│   │   ├── MyTreatmentsController.php
+│   │   └── BillingController.php
+│   └── Middleware/
+│       ├── HandleInertiaRequests.php
+│       └── RoleMiddleware.php
+├── Models/
+│   ├── User.php
+│   ├── Patient.php
+│   ├── Appointment.php
+│   ├── AppointmentStatusLog.php
+│   ├── Treatment.php
+│   ├── Invoice.php
+│   └── Payment.php
+├── Observers/
+│   └── TreatmentObserver.php
+├── Policies/
+│   └── TreatmentPolicy.php
+└── Services/
+    └── AppointmentAvailabilityService.php
+
 resources/js/
 ├── Layouts/
-│   └── AppLayout.jsx         # Persistent sidebar + topbar + flash messages
-├── Components/
-│   ├── StatusBadge.jsx        # Reusable appointment status pill
-│   ├── StatCard.jsx           # Dashboard metric card
-│   ├── Patients/
-│   │   └── PatientModal.jsx   # Add patient form (4 sections, 17 fields)
-│   └── Appointments/
-│       └── AppointmentModal.jsx
+│   └── AppLayout.jsx
 ├── Pages/
+│   ├── Auth/Login.jsx
 │   ├── Dashboard.jsx
-│   ├── Patients/Index.jsx
+│   ├── Patients/
+│   │   ├── Index.jsx
+│   │   ├── Show.jsx
+│   │   └── Edit.jsx
 │   ├── Appointments/Index.jsx
-│   ├── Treatments/Index.jsx
-│   └── Billing/Index.jsx
-app/Http/Controllers/
-├── DashboardController.php
-├── PatientController.php
-├── AppointmentController.php
-├── TreatmentController.php
-└── BillingController.php
+│   ├── Treatments/
+│   │   ├── Index.jsx
+│   │   └── MyTreatments.jsx
+│   ├── Billing/
+│   │   ├── Index.jsx
+│   │   └── Receipt.jsx
+│   └── Errors/403.jsx
+├── Components/
+│   ├── StatusBadge.jsx
+│   ├── StatCard.jsx
+│   ├── EmptyState.jsx
+│   ├── Spinner.jsx
+│   ├── Patients/
+│   │   ├── PatientModal.jsx
+│   │   ├── PersonalInfoTab.jsx
+│   │   ├── AppointmentHistoryTab.jsx
+│   │   ├── TreatmentHistoryTab.jsx
+│   │   └── PaymentHistoryTab.jsx
+│   ├── Appointments/
+│   │   ├── AppointmentModal.jsx
+│   │   └── AppointmentDetailPanel.jsx
+│   ├── Treatments/
+│   │   └── TreatmentModal.jsx
+│   └── Billing/
+│       ├── InvoiceModal.jsx
+│       └── PaymentModal.jsx
+└── Utils/
+    └── can.js
+
+resources/views/
+├── app.blade.php
+└── pdf/
+    └── receipt.blade.php
 ```
 
 ---
@@ -95,7 +100,7 @@ app/Http/Controllers/
 **Prerequisites:** PHP 8.2+, Composer, Node.js 20+
 
 ```bash
-# 1. Clone and install dependencies
+# 1. Clone and install
 git clone https://github.com/your-username/bobbydent-crm.git
 cd bobbydent-crm
 composer install
@@ -104,21 +109,23 @@ npm install
 # 2. Environment
 cp .env.example .env
 php artisan key:generate
+# In .env, set:
+# DB_CONNECTION=sqlite
+# DB_DATABASE=/absolute/path/to/database/database.sqlite
 
 # 3. Database
 touch database/database.sqlite
-# Set DB_CONNECTION=sqlite and DB_DATABASE=/absolute/path/to/database/database.sqlite in .env
 php artisan migrate --seed
 
 # 4. Run
-php artisan serve
+php artisan serve   # http://localhost:8000
 npm run dev
 ```
 
-Visit `http://localhost:8000`
+**Demo credentials:**
 
----
-
-## Status
-
-This is a portfolio/demo project currently in active development. Core modules (dashboard, patients, appointments) are built. Treatments, billing, and full database persistence are in progress.
+| Role | Email | Password |
+|---|---|---|
+| Admin | admin@bobbydent.com | password |
+| Receptionist | reception@bobbydent.com | password |
+| Dentist | dentist@bobbydent.com | password |
