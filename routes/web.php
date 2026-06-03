@@ -81,6 +81,10 @@ Route::middleware('auth')->group(function () {
     Route::get('/billing', [BillingController::class, 'index'])->name('billing.index');
     Route::get('/billing/invoices/{invoice}/receipt', [BillingController::class, 'receipt'])
          ->name('billing.receipt');
+    
+    // ── Billing: download receipt (all authenticated users) ───────────────────
+    Route::get('/billing/invoices/{invoice}/download', [BillingController::class, 'downloadReceipt'])
+         ->name('billing.receipt.download');
 
     // ── Billing: write (admin + receptionist) ────────────────────────────────
     Route::middleware('role:admin,receptionist')->group(function () {

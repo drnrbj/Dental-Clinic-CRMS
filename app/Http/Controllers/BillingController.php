@@ -9,6 +9,7 @@ use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Inertia\Response;
+use Barryvdh\DomPDF\Facade\Pdf;
 
 class BillingController extends Controller
 {
@@ -163,6 +164,22 @@ class BillingController extends Controller
                 ]),
             ],
         ]);
+    }
+     public function downloadReceipt(Invoice $invoice): \Symfony\Component\HttpFoundation\Response
+    {
+        $invoice->load([
+            'patient',
+            'appointment.dentist',
+            'treatment',
+            'payments.recordedBy',
+        ]);
+ 
+        $pdf = Pdf::loadView('pdf.receipt', compact('invoice'))
+            ->setPaper('a4', 'portrait');
+ 
+        $filename = 'Receipt-' . $invoice->invoice_number . '.pdf';
+ 
+        return $pdf->download($filename);
     }
 
     private function formatInvoice(Invoice $inv): array
