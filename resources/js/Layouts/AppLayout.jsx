@@ -186,7 +186,7 @@ export default function AppLayout({ children, title }) {
         {/* ── Main area ── */}
         <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
           {/* Topbar */}
-          <header className="h-16 bg-white border-b border-gray-200 flex items-center justify-between px-4 sm:px-6 flex-shrink-0">
+          <header className="h-18 bg-white border-b border-gray-200 flex items-center justify-between px-4 sm:px-6 flex-shrink-0">
             {/* Left: hamburger + page title */}
             <div className="flex items-center gap-3">
               <button
